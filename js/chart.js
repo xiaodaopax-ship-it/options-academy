@@ -15,10 +15,10 @@
     for (let v = Math.ceil(min / st) * st; v <= max + 1e-9; v += st) out.push(Math.round(v * 1e6) / 1e6);
     return out;
   }
-  function short(v) {
+  function short(v, cur) {
     const a = Math.abs(v);
     const s = a >= 1000 ? (a / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.round(a));
-    return (v < 0 ? '−' : '') + '$' + s;
+    return (v < 0 ? '−' : '') + cur + s;
   }
 
   // d = { xs, series: [{ ys, color, dash }], S, marks: [x...], cursor: x|null }
@@ -35,6 +35,7 @@
     const css = getComputedStyle(document.documentElement);
     const c = (n) => css.getPropertyValue(n).trim();
     const pad = { l: 52, r: 10, t: 10, b: 24 };
+    const cur = d.cur || '$';
 
     let ymin = 0, ymax = 0;
     for (const s of d.series) for (const y of s.ys) { if (y < ymin) ymin = y; if (y > ymax) ymax = y; }
@@ -57,14 +58,14 @@
     for (const t of ticks(ymin, ymax, 5)) {
       const y = Math.round(Y(t)) + 0.5;
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
-      ctx.fillText(short(t), pad.l - 6, y);
+      ctx.fillText(short(t, cur), pad.l - 6, y);
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (const t of ticks(x0, x1, Math.max(3, Math.floor(pw / 70)))) {
       const x = Math.round(X(t)) + 0.5;
       ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke();
-      ctx.fillText('$' + t, x, pad.t + ph + 6);
+      ctx.fillText(cur + t, x, pad.t + ph + 6);
     }
 
     // profit / loss fill under the first series

@@ -1,8 +1,9 @@
 // Offline support: serve from cache, refresh cache in the background (stale-while-revalidate).
-const CACHE = 'options-academy-v1';
+const CACHE = 'options-academy-v2';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.json', './icon.svg',
-  './js/bs.js', './js/strategy.js', './js/lessons.js', './js/questions.js', './js/chart.js', './js/app.js',
+  './js/bs.js', './js/strategy.js', './js/lessons.js', './js/lessons-cn.js',
+  './js/questions.js', './js/questions-cn.js', './js/chart.js', './js/app.js',
 ];
 
 self.addEventListener('install', (e) => {
