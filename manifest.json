@@ -1,0 +1,14 @@
+{
+  "name": "期权学堂",
+  "short_name": "期权学堂",
+  "description": "美股期权学习：知识章节、题库、策略模拟器",
+  "lang": "zh-CN",
+  "start_url": "./index.html#/learn",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f8",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
