@@ -33,8 +33,8 @@
 </tbody>
 </table>
 <h3>和股指期权的区别</h3>
-<p>中金所也有股指期权，比如沪深 300、中证 1000、上证 50 股指期权。它们的标的是指数本身，按点数计价、现金交割，开户渠道是期货公司，属于另一套规则。本篇只讲交易所 ETF 期权。</p>
-<div class="tip">前面"美股期权"篇讲的概念、盈亏图、Greeks、隐含波动率和策略，在 A 股 ETF 期权上同样适用。本篇重点讲<strong>规则上的差异</strong>。</div>`,
+<p>中金所也有股指期权，比如沪深 300、中证 1000、上证 50 股指期权。它们的标的是指数本身，按点数计价、现金交割，开户渠道是期货公司，属于另一套规则。这一部分只讲交易所 ETF 期权。</p>
+<div class="tip">第一部分讲的概念、盈亏图、Greeks、隐含波动率和策略，在 A 股 ETF 期权上同样适用。这一部分重点讲<strong>规则上的差异</strong>。</div>`,
     },
     {
       id: 102,
@@ -275,13 +275,13 @@
   ];
 
   OA.lessons.push(...cn);
-  // Normalise: track + display number
+  // One continuous course: part 1 (ids 1-10) then part 2 (ids 101-108) numbered 11-18.
   OA.lessons.forEach((l) => {
     l.track = l.id > 100 ? 'cn' : 'us';
-    l.no = l.id > 100 ? l.id - 100 : l.id;
+    l.no = l.id > 100 ? 10 + (l.id - 100) : l.id;
   });
   OA.tracks = [
-    { id: 'us', name: '美股期权', title: '美股期权入门', desc: '从概念到策略，每章配练习题，策略可以直接在模拟器里试。' },
-    { id: 'cn', name: 'A股ETF期权', title: 'A股ETF期权', desc: '合约规则、开户权限、保证金、行权交收。通用概念请先学美股篇。' },
+    { id: 'us', name: '美股', title: '第一部分 · 期权基础与美股实务', desc: '概念、盈亏图、定价、Greeks、波动率和策略，这些在任何市场都通用。' },
+    { id: 'cn', name: 'A股ETF', title: '第二部分 · A股ETF期权', desc: '合约规则、开户权限、保证金、行权交收，以及和美股的差异。' },
   ];
 })(typeof window !== 'undefined' ? window : globalThis);

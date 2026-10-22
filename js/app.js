@@ -68,7 +68,6 @@
       onPick(b.dataset.seg);
     }));
   }
-  const trackItems = () => OA.tracks.map((t) => [t.id, t.name]);
 
   // ---------- router ----------
   function route() {
@@ -93,38 +92,42 @@
   // ---------- learn ----------
   const lessonsOf = (track) => OA.lessons.filter((l) => l.track === track);
 
-  function renderLearn() {
-    setHeader(APP);
-    setTab('learn');
-    const track = OA.tracks.find((t) => t.id === store.track) || OA.tracks[0];
-    const L = lessonsOf(track.id);
-    const done = L.filter((l) => store.read[l.id]).length;
-    view.innerHTML = `
-${segHtml(trackItems(), track.id, '课程')}
-<section class="card hero">
-  <h2>${esc(track.title)}</h2>
-  <p class="muted">${esc(track.desc)}</p>
-  <div class="progress" role="progressbar" aria-label="学习进度" aria-valuemin="0" aria-valuemax="${L.length}" aria-valuenow="${done}"><div style="width:${(done / L.length) * 100}%"></div></div>
-  <p class="small muted">已完成 ${done} / ${L.length} 章</p>
-</section>
-<ol class="list">
-  ${L.map((l) => `<li><a class="list-item" href="#/lesson/${l.id}">
+  const lessonItem = (l) => `<li><a class="list-item" href="#/lesson/${l.id}">
     <span class="num" aria-hidden="true">${l.no}</span>
     <span class="grow"><strong>${esc(l.title)}</strong><span class="small muted block">${esc(l.summary)}</span></span>
     ${store.read[l.id] ? '<span class="check" aria-label="已完成">✓</span>' : ''}
-  </a></li>`).join('')}
-</ol>`;
-    bindSeg(view, (t) => { store.track = t; save(); renderLearn(); });
+  </a></li>`;
+
+  function renderLearn() {
+    setHeader(APP);
+    setTab('learn');
+    const all = OA.lessons;
+    const done = all.filter((l) => store.read[l.id]).length;
+    const nextL = all.find((l) => !store.read[l.id]);
+    view.innerHTML = `
+<section class="card hero">
+  <h2>期权学习路线</h2>
+  <p class="muted">共 ${all.length} 章：先学通用概念和美股实务，再学 A 股 ETF 期权的规则。每章配练习题，策略可以直接在模拟器里试。</p>
+  <div class="progress" role="progressbar" aria-label="学习进度" aria-valuemin="0" aria-valuemax="${all.length}" aria-valuenow="${done}"><div style="width:${(done / all.length) * 100}%"></div></div>
+  <p class="small muted">已完成 ${done} / ${all.length} 章</p>
+  ${nextL ? `<a class="btn primary block" href="#/lesson/${nextL.id}">${done ? '继续学习' : '开始学习'}：第 ${nextL.no} 章 ${esc(nextL.title)}</a>` : '<p class="small">全部章节已学完，可以去题库巩固。</p>'}
+</section>
+${OA.tracks.map((t) => {
+    const L = lessonsOf(t.id);
+    const d = L.filter((l) => store.read[l.id]).length;
+    return `<h3 class="section-title">${esc(t.title)} <span class="small">${d}/${L.length}</span></h3>
+<p class="small muted part-desc">${esc(t.desc)}</p>
+<ol class="list">${L.map(lessonItem).join('')}</ol>`;
+  }).join('')}`;
   }
 
   function renderLesson(args) {
     const l = OA.lessons.find((x) => x.id === Number(args[0]));
     if (!l) return go('#/learn');
-    const L = lessonsOf(l.track);
+    const L = OA.lessons;
     const idx = L.indexOf(l);
     const prev = L[idx - 1], next = L[idx + 1];
-    if (store.track !== l.track) { store.track = l.track; save(); }
-    setHeader(`${l.track === 'cn' ? 'A股 · ' : ''}第 ${l.no} 章`, () => go('#/learn'));
+    setHeader(`第 ${l.no} 章 · ${l.track === 'cn' ? 'A股ETF' : '基础与美股'}`, () => go('#/learn'));
     setTab('learn');
     const qs = OA.questions.bank.filter((q) => q.ch === l.id);
     view.innerHTML = `
@@ -148,11 +151,11 @@ ${segHtml(trackItems(), track.id, '课程')}
   // ---------- quiz ----------
   const bankById = Object.fromEntries(OA.questions.bank.map((q) => [q.id, q]));
   function chapterName(ch) {
-    if (ch === 'calc') return '美股计算题';
-    if (ch === 'calc-cn') return 'A股计算题';
-    return ch > 100 ? `A股 第 ${ch - 100} 章` : `美股 第 ${ch} 章`;
+    if (ch === 'calc') return '计算题 · 美股';
+    if (ch === 'calc-cn') return '计算题 · A股';
+    const l = OA.lessons.find((x) => x.id === ch);
+    return l ? `第 ${l.no} 章` : '';
   }
-  const trackOfQ = (q) => (q.ch === 'calc-cn' || q.ch > 100 ? 'cn' : 'us');
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -188,47 +191,47 @@ ${segHtml(trackItems(), track.id, '课程')}
     const c = ids.filter((k) => store.answered[k].c).length + store.genStats.c;
     return { n, c, wrong: store.wrong.length + store.wrongGen.length };
   }
-  const wrongList = (track) => [...store.wrong.map((id) => bankById[id]).filter(Boolean), ...store.wrongGen].filter((q) => trackOfQ(q) === track);
+  const wrongList = () => [...store.wrong.map((id) => bankById[id]).filter(Boolean), ...store.wrongGen];
+  // Mixed calc drill: alternate US and CN generators
+  function mixedCalc(n) {
+    const us = OA.questions.generate(Math.ceil(n / 2)), cn = OA.questions.generateCn(Math.floor(n / 2));
+    return shuffle(us.concat(cn));
+  }
 
   function renderQuizHome() {
     setHeader('题库');
     setTab('quiz');
-    const track = store.track === 'cn' ? 'cn' : 'us';
-    const bank = OA.questions.bank.filter((q) => trackOfQ(q) === track);
+    const bank = OA.questions.bank;
     const st = quizStats();
-    const wrongN = wrongList(track).length;
-    const gen = track === 'cn' ? () => OA.questions.generateCn(10) : () => OA.questions.generate(10);
-    const chapters = lessonsOf(track).map((l) => ({ l, n: bank.filter((q) => q.ch === l.id).length })).filter((x) => x.n);
-    const tn = track === 'cn' ? 'A股' : '美股';
+    const wrongN = wrongList().length;
+    const chapterRow = (l) => {
+      const qs = bank.filter((q) => q.ch === l.id);
+      if (!qs.length) return '';
+      const done = qs.filter((q) => store.answered[q.id]).length;
+      return `<li><button class="list-item" data-ch="${l.id}">
+      <span class="num" aria-hidden="true">${l.no}</span>
+      <span class="grow"><strong>${esc(l.title)}</strong><span class="small muted block">${qs.length} 题 · 已做 ${done}</span></span>
+      <span aria-hidden="true" class="muted">›</span></button></li>`;
+    };
     view.innerHTML = `
-${segHtml(trackItems(), track, '题库范围')}
 <section class="card"><div class="stats3">
-  <div><b>${st.n}</b><span>已答题次（全部）</span></div>
+  <div><b>${st.n}</b><span>已答题次</span></div>
   <div><b>${st.n ? Math.round((st.c / st.n) * 100) : 0}%</b><span>正确率</span></div>
-  <div><b>${wrongN}</b><span>${tn}错题</span></div>
+  <div><b>${wrongN}</b><span>错题</span></div>
 </div></section>
 <div class="tiles">
-  <button class="tile" id="qRandom"><strong>随机 10 题</strong><span>${tn}全部章节</span></button>
-  <button class="tile" id="qCalc"><strong>计算题训练</strong><span>随机生成，可无限练</span></button>
+  <button class="tile" id="qRandom"><strong>随机 10 题</strong><span>全部 ${bank.length} 道概念题中抽取</span></button>
+  <button class="tile" id="qCalc"><strong>计算题训练</strong><span>美股 + A股，随机生成</span></button>
   <button class="tile" id="qWrong"${wrongN ? '' : ' disabled'}><strong>错题本</strong><span>${wrongN ? wrongN + ' 道，答对自动移出' : '暂无错题'}</span></button>
-  <button class="tile" id="qAll"><strong>全部概念题</strong><span>${bank.length} 道，顺序作答</span></button>
+  <button class="tile" id="qAll"><strong>全部概念题</strong><span>${bank.length} 道，按章节顺序</span></button>
 </div>
-<h3 class="section-title">按章节练习</h3>
-<ul class="list">
-  ${chapters.map(({ l, n }) => {
-    const done = bank.filter((q) => q.ch === l.id && store.answered[q.id]).length;
-    return `<li><button class="list-item" data-ch="${l.id}">
-      <span class="num" aria-hidden="true">${l.no}</span>
-      <span class="grow"><strong>${esc(l.title)}</strong><span class="small muted block">${n} 题 · 已做 ${done}</span></span>
-      <span aria-hidden="true" class="muted">›</span></button></li>`;
-  }).join('')}
-</ul>`;
-    bindSeg(view, (t) => { store.track = t; save(); renderQuizHome(); });
+${OA.tracks.map((t) => `<h3 class="section-title">${esc(t.title)}</h3><ul class="list">${lessonsOf(t.id).map(chapterRow).join('')}</ul>`).join('')}`;
     const home = () => renderQuizHome();
-    $('#qRandom').onclick = () => startQuiz(() => shuffle(bank.slice()).slice(0, 10), `${tn}随机 10 题`, home);
-    $('#qCalc').onclick = () => startQuiz(gen, `${tn}计算题训练`, home);
-    $('#qWrong').onclick = () => startQuiz(() => wrongList(track), `${tn}错题本`, home);
-    $('#qAll').onclick = () => startQuiz(() => bank.slice(), `${tn}全部概念题`, home);
+    const ordered = () => OA.lessons.flatMap((l) => bank.filter((q) => q.ch === l.id));
+    $('#qRandom').onclick = () => startQuiz(() => shuffle(bank.slice()).slice(0, 10), '随机 10 题', home);
+    $('#qCalc').onclick = () => startQuiz(() => mixedCalc(10), '计算题训练', home);
+    $('#qWrong').onclick = () => startQuiz(wrongList, '错题本', home);
+    $('#qAll').onclick = () => startQuiz(ordered, '全部概念题', home);
     $$('[data-ch]').forEach((b) => (b.onclick = () => {
       const ch = Number(b.dataset.ch);
       startQuiz(() => bank.filter((q) => q.ch === ch), `${chapterName(ch)}练习`, home);
@@ -696,13 +699,10 @@ ${segHtml(trackItems(), track, '题库范围')}
     setHeader('我的');
     setTab('me');
     const st = quizStats();
-    const prog = OA.tracks.map((t) => {
-      const L = lessonsOf(t.id);
-      return `${t.name} ${L.filter((l) => store.read[l.id]).length}/${L.length}`;
-    });
+    const done = OA.lessons.filter((l) => store.read[l.id]).length;
     view.innerHTML = `
 <section class="card"><div class="stats3">
-  <div><b class="small-b">${prog.join('<br>')}</b><span>已学章节</span></div>
+  <div><b>${done}/${OA.lessons.length}</b><span>已学章节</span></div>
   <div><b>${st.n}</b><span>已答题次</span></div>
   <div><b>${st.n ? Math.round((st.c / st.n) * 100) : 0}%</b><span>正确率</span></div>
 </div></section>
@@ -718,12 +718,6 @@ ${segHtml(trackItems(), track, '题库范围')}
   <h3>数据</h3>
   <p class="small">学习进度、答题记录和模拟器设置只保存在本机浏览器里，不会上传。清除浏览器数据会一并清除这些记录。</p>
   <button class="btn danger" id="reset">清除全部学习记录</button>
-</section>
-<section class="card">
-  <h3>后续计划</h3>
-  <ul class="small">
-    <li>接入延迟行情，用真实期权链建模拟持仓</li>
-  </ul>
 </section>
 <p class="note small muted">本应用仅用于学习期权知识。内容和计算结果均不构成投资建议。期权交易存在亏损全部本金乃至更多的风险。规则以交易所和券商最新规定为准。</p>`;
     $('#reset').onclick = () => {
