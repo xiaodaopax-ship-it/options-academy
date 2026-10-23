@@ -247,3 +247,37 @@ html, body { overflow-x: hidden; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* plain-language box, cases, glossary */
+.easy {
+  margin: 4px 0 14px; padding: 12px 14px;
+  background: color-mix(in srgb, #f59e0b 10%, var(--card));
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--border));
+  border-radius: 10px; font-size: 15.5px;
+}
+.easy-tag { margin: 0 0 4px !important; font-weight: 700; color: #b45309; }
+@media (prefers-color-scheme: dark) { .easy-tag { color: #fbbf24; } }
+.easy ul { padding-left: 20px; }
+.term-hint { margin: 0 0 4px !important; }
+.cases { margin-top: 22px; padding-top: 6px; border-top: 2px dashed var(--border); }
+.cases h3 { margin-top: 12px !important; }
+.cases h4 { margin: 16px 0 6px; font-size: 15.5px; color: var(--text); }
+.lesson td.pos, .lesson td.neg { font-weight: 600; white-space: nowrap; }
+.term {
+  display: inline; padding: 0; margin: 0; border: none; background: none;
+  font: inherit; color: inherit; cursor: pointer;
+  text-decoration: underline dotted var(--primary); text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.term:hover { color: var(--primary); }
+.sheet {
+  width: min(92vw, 520px); margin: auto auto calc(16px + env(safe-area-inset-bottom));
+  border: 1px solid var(--border); border-radius: 16px; padding: 18px 18px 14px;
+  background: var(--card); color: var(--text);
+}
+.sheet::backdrop { background: rgba(0, 0, 0, 0.35); }
+.sheet h2 { margin: 0 0 8px; font-size: 18px; color: var(--primary); }
+.sheet p { margin: 0 0 6px; line-height: 1.7; }
+.gloss { margin: 0; }
+.gloss-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+.gloss dt { font-weight: 700; }
+.gloss dd { margin: 4px 0 0; font-size: 15px; }

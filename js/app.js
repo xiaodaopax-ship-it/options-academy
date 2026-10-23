@@ -77,7 +77,7 @@
     const params = new URLSearchParams(qs || '');
     const name = parts[0] || 'learn';
     onResize = null;
-    const routes = { learn: renderLearn, lesson: renderLesson, quiz: renderQuizHome, sim: renderSim, me: renderMe };
+    const routes = { learn: renderLearn, lesson: renderLesson, quiz: renderQuizHome, sim: renderSim, me: renderMe, glossary: renderGlossary };
     (routes[name] || renderLearn)(parts.slice(1), params);
     window.scrollTo(0, 0);
     view.focus({ preventScroll: true });
@@ -111,6 +111,7 @@
   <div class="progress" role="progressbar" aria-label="学习进度" aria-valuemin="0" aria-valuemax="${all.length}" aria-valuenow="${done}"><div style="width:${(done / all.length) * 100}%"></div></div>
   <p class="small muted">已完成 ${done} / ${all.length} 章</p>
   ${nextL ? `<a class="btn primary block" href="#/lesson/${nextL.id}">${done ? '继续学习' : '开始学习'}：第 ${nextL.no} 章 ${esc(nextL.title)}</a>` : '<p class="small">全部章节已学完，可以去题库巩固。</p>'}
+  <a class="btn block" href="#/glossary">📚 术语表：${(OA.glossary || []).length} 个术语的大白话解释</a>
 </section>
 ${OA.tracks.map((t) => {
     const L = lessonsOf(t.id);
@@ -131,7 +132,12 @@ ${OA.tracks.map((t) => {
     setTab('learn');
     const qs = OA.questions.bank.filter((q) => q.ch === l.id);
     view.innerHTML = `
-<article class="card lesson"><h2>${esc(l.title)}</h2>${l.html}</article>
+<article class="card lesson"><h2>${esc(l.title)}</h2>
+  ${l.easy ? `<section class="easy" aria-label="大白话"><p class="easy-tag">💡 大白话</p>${l.easy}</section>` : ''}
+  <p class="small muted term-hint">文中带下划线的词，点一下就能看解释。</p>
+  ${l.html}
+  ${l.cases ? `<section class="cases" aria-label="案例"><h3>📖 案例</h3>${l.cases}</section>` : ''}
+</article>
 <div class="btn-row">
   ${qs.length ? `<button class="btn" id="practice">本章练习（${qs.length} 题）</button>` : ''}
   <button class="btn primary" id="done">${store.read[l.id] ? '已学完 ✓ 下一章' : '标记已学完'}</button>
@@ -146,6 +152,100 @@ ${OA.tracks.map((t) => {
       go(next ? '#/lesson/' + next.id : '#/learn');
     };
     if (qs.length) $('#practice').onclick = () => startQuiz(() => qs, `第 ${l.no} 章练习`, () => renderLesson(args));
+    linkTerms($('.lesson'));
+  }
+
+  // ---------- glossary ----------
+  const gloss = OA.glossary || [];
+  // Longest patterns first so "Covered Call" wins over "Call", "买卖价差" over "价差".
+  const NO_AUTO_LINK = new Set(['期权']); // too common to underline in every lesson
+  const glossPatterns = gloss
+    .flatMap((g, i) => (NO_AUTO_LINK.has(g.term) ? [] : [g.term, ...g.aliases].map((p) => ({ p, i }))))
+    .sort((a, b) => b.p.length - a.p.length);
+  const SKIP = new Set(['CODE', 'A', 'BUTTON', 'H2', 'H3', 'H4', 'TH', 'SCRIPT']);
+  const isAscii = (s) => /^[\x20-\x7e]+$/.test(s);
+  // For each pattern, the longer glossary patterns that contain it (e.g. 行权 -> 行权价)
+  const longerOf = new Map(glossPatterns.map(({ p }) => [p, glossPatterns.map((x) => x.p).filter((q) => q.length > p.length && q.includes(p))]));
+  function insideLonger(t, at, p) {
+    return longerOf.get(p).some((q) => {
+      for (let o = q.indexOf(p); o >= 0; o = q.indexOf(p, o + 1)) if (t.substr(at - o, q.length) === q) return true;
+      return false;
+    });
+  }
+
+  // Wrap the first occurrence of each glossary term in a tappable button.
+  function linkTerms(rootEl) {
+    if (!rootEl || !gloss.length) return;
+    const used = new Set();
+    const accept = (node) => {
+      for (let el = node.parentElement; el && el !== rootEl; el = el.parentElement) {
+        if (SKIP.has(el.tagName) || el.classList.contains('formula') || el.classList.contains('term')) return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    };
+    for (const { p, i } of glossPatterns) {
+      if (used.has(i)) continue;
+      const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, { acceptNode: accept });
+      let node;
+      while ((node = walker.nextNode())) {
+        const t = node.nodeValue;
+        let at = t.indexOf(p);
+        // ASCII terms must not sit inside a longer word (e.g. "Put" in "Output").
+        const bad = (k) => insideLonger(t, k, p) ||
+          (isAscii(p) && (/[A-Za-z0-9]/.test(t[k - 1] || '') || /[A-Za-z0-9]/.test(t[k + p.length] || '')));
+        while (at >= 0 && bad(at)) at = t.indexOf(p, at + 1);
+        if (at < 0) continue;
+        const after = node.splitText(at);
+        after.splitText(p.length);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'term';
+        btn.dataset.g = String(i);
+        btn.setAttribute('aria-haspopup', 'dialog');
+        btn.textContent = p;
+        after.parentNode.replaceChild(btn, after);
+        used.add(i);
+        break;
+      }
+    }
+  }
+
+  const sheet = $('#termSheet');
+  function openTerm(i) {
+    const g = gloss[i];
+    if (!g || !sheet) return;
+    $('#termTitle').textContent = g.term + (g.aliases.length ? `（${g.aliases.join(' / ')}）` : '');
+    $('#termDef').textContent = g.def;
+    if (sheet.showModal) sheet.showModal(); else sheet.setAttribute('open', '');
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.term');
+    if (b) openTerm(Number(b.dataset.g));
+  });
+  if (sheet) {
+    $('#termClose').addEventListener('click', () => sheet.close ? sheet.close() : sheet.removeAttribute('open'));
+    sheet.addEventListener('click', (e) => { if (e.target === sheet && sheet.close) sheet.close(); }); // tap backdrop
+  }
+
+  function renderGlossary() {
+    setHeader('术语表', () => go('#/learn'));
+    setTab('learn');
+    view.innerHTML = `
+<section class="card">
+  <label class="field"><span>搜索术语</span><input type="search" id="gq" placeholder="例如：保证金、Delta、价外" autocomplete="off"></label>
+  <p class="small muted">共 ${gloss.length} 个常用术语，每个都用一两句话解释。</p>
+</section>
+<dl class="gloss" id="glist"></dl>`;
+    const list = $('#glist'), q = $('#gq');
+    const draw = () => {
+      const k = q.value.trim().toLowerCase();
+      const hits = gloss.filter((g) => !k || [g.term, ...g.aliases, g.def].some((s) => s.toLowerCase().includes(k)));
+      list.innerHTML = hits.length
+        ? hits.map((g) => `<div class="gloss-item"><dt>${esc(g.term)}${g.aliases.length ? ` <span class="small muted">${esc(g.aliases.join(' / '))}</span>` : ''}</dt><dd>${esc(g.def)}</dd></div>`).join('')
+        : '<p class="small muted">没有找到相关术语。</p>';
+    };
+    q.addEventListener('input', draw);
+    draw();
   }
 
   // ---------- quiz ----------

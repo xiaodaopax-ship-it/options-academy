@@ -1,9 +1,9 @@
 // Offline support: serve from cache, refresh cache in the background (stale-while-revalidate).
-const CACHE = 'options-academy-v3';
+const CACHE = 'options-academy-v4';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.json', './icon.svg',
   './icon-180.png', './icon-192.png', './icon-512.png',
-  './js/bs.js', './js/strategy.js', './js/lessons.js', './js/lessons-cn.js',
+  './js/bs.js', './js/strategy.js', './js/lessons.js', './js/lessons-cn.js', './js/lessons-easy.js',
   './js/questions.js', './js/questions-cn.js', './js/chart.js', './js/app.js',
 ];
 
